@@ -1,0 +1,30 @@
+name: Publish MoCHi APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-mochi-apk.yml"
+      - "apk-release-trigger.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK from public release
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 "https://github.com/mehulpadole/mochi-aura-modal/releases/download/mochi-android-preview-2026-10-23/MoCHi.apk" -o MoCHi.apk
+          test "$(stat -c%s MoCHi.apk)" -eq 95620776
+          echo "58fa91d6545067ace79ee9f424f11df960de6e8f88a760dace1e32f11bcebae6  MoCHi.apk" | sha256sum -c -
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: mochi-android-preview-2026-10-23
+        run: |
+          set -euo pipefail
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag -y 2>/dev/null || true
+          gh release create "$TAG" MoCHi.apk --repo "$GITHUB_REPOSITORY" --title "MoCHi Android Preview" --notes "Android preview build for direct testing. SHA-256: 58fa91d6545067ace79ee9f424f11df960de6e8f88a760dace1e32f11bcebae6"
